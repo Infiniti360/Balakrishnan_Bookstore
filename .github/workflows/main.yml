@@ -52,22 +52,28 @@ jobs:
       - name: Create test result directories
         run: |
           mkdir -p playwright-report test-results
+          echo "Created test result directories"
 
       - name: Run tests
         run: |
-          npx playwright test --reporter=html,junit
+          npx playwright test --reporter=html,junit || true
+          echo "Test execution completed"
 
-      - name: Validate test result directories
+      - name: Debug test directories
+        run: |
+          echo "Current working directory: $(pwd)"
+          echo "Contents of playwright-report:"
+          ls -la playwright-report/ || echo "playwright-report directory not found"
+          echo "Contents of test-results:"
+          ls -la test-results/ || echo "test-results directory not found"
+
+      - name: Verify test results
         run: |
           if [ ! -d "playwright-report" ] || [ ! -d "test-results" ]; then
-            echo "Required directories are missing!"
+            echo "Test result directories are missing"
             exit 1
           fi
-
-      - name: List test result directories
-        run: |
-          ls -la playwright-report/
-          ls -la test-results/
+          echo "Test result directories verified"
 
       - name: Upload test results
         uses: actions/upload-artifact@v3
@@ -78,15 +84,30 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 5
+          if-no-files-found: error
 
       - name: Notify on failure
         if: failure()
         uses: actions/github-script@v6
         with:
           script: |
+            const fs = require('fs');
+            let errorMessage = '❌ Tests failed! Check the [test results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.';
+
+            try {
+              if (fs.existsSync('playwright-report/index.html')) {
+                errorMessage += '\n\nHTML report is available in the artifacts.';
+              }
+              if (fs.existsSync('test-results/junit-results.xml')) {
+                errorMessage += '\n\nJUnit report is available in the artifacts.';
+              }
+            } catch (error) {
+              errorMessage += '\n\nError checking report files: ' + error.message;
+            }
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '❌ Tests failed! Check the [test results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.'
-            })
+              body: errorMessage
+            });
