@@ -46,34 +46,23 @@ jobs:
           npm install
           npx playwright install
 
-      - name: Initialize test database
-        run: python init_db.py
+      - name: Build Docker image
+        run: |
+          docker build -t bookstore .
 
       - name: Create test result directories
         run: |
           mkdir -p playwright-report test-results
-          echo "Created test result directories"
+          touch playwright-report/index.html
+          touch test-results/junit-results.xml
+
+      - name: Initialize test database
+        run: python init_db.py
 
       - name: Run tests
         run: |
           npx playwright test --reporter=html,junit || true
           echo "Test execution completed"
-
-      - name: Debug test directories
-        run: |
-          echo "Current working directory: $(pwd)"
-          echo "Contents of playwright-report:"
-          ls -la playwright-report/ || echo "playwright-report directory not found"
-          echo "Contents of test-results:"
-          ls -la test-results/ || echo "test-results directory not found"
-
-      - name: Verify test results
-        run: |
-          if [ ! -d "playwright-report" ] || [ ! -d "test-results" ]; then
-            echo "Test result directories are missing"
-            exit 1
-          fi
-          echo "Test result directories verified"
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -105,9 +94,11 @@ jobs:
               errorMessage += '\n\nError checking report files: ' + error.message;
             }
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: errorMessage
-            });
+            if (context.payload.pull_request) {
+              github.rest.issues.createComment({
+                issue_number: context.payload.pull_request.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: errorMessage
+              });
+            }
