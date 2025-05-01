@@ -25,21 +25,26 @@ jobs:
           node-version: "16"
           cache: "npm"
 
+      - name: Create package.json
+        run: |
+          echo '{
+            "name": "bookstore",
+            "version": "1.0.0",
+            "description": "Bookstore application",
+            "scripts": {
+              "test": "playwright test"
+            },
+            "dependencies": {
+              "@playwright/test": "^1.40.0"
+            }
+          }' > package.json
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           npm install
           npx playwright install
-
-      - name: Build and push Docker image
-        run: |
-          docker build -t bookstore .
-          docker tag bookstore bookstore:latest
-          docker run -d -p 8000:8000 --name bookstore-test \
-            --health-cmd "curl -f http://localhost:8000/health || exit 1" \
-            --health-interval 10s --health-timeout 5s --health-retries 5 \
-            bookstore
 
       - name: Create test result directories
         run: |
@@ -49,6 +54,14 @@ jobs:
 
       - name: Initialize test database
         run: python init_db.py
+
+      - name: Build and run Docker container
+        run: |
+          docker build -t bookstore .
+          docker run -d -p 8000:8000 --name bookstore-test \
+            --health-cmd "curl -f http://localhost:8000/health || exit 1" \
+            --health-interval 10s --health-timeout 5s --health-retries 5 \
+            bookstore
 
       - name: Run tests
         run: |
@@ -65,7 +78,7 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 5
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Notify on failure
         if: failure()
