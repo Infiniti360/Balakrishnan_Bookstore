@@ -66,7 +66,8 @@ jobs:
           touch test-results/junit-results.xml
 
       - name: Initialize test database
-        run: python bookstore/init_db.py
+        working-directory: bookstore
+        run: python init_db.py
 
       - name: Build and run Docker container
         run: |
