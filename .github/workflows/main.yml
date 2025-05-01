@@ -31,10 +31,14 @@ jobs:
             "version": "1.0.0",
             "description": "Bookstore application",
             "scripts": {
-              "test": "playwright test"
+              "test": "playwright test",
+              "report": "allure generate allure-results --clean && allure open"
             },
             "dependencies": {
-              "@playwright/test": "^1.40.0"
+              "@playwright/test": "^1.40.0",
+              "allure-playwright": "^2.0.0",
+              "playwright-html-report": "^1.0.0",
+              "puppeteer": "^21.0.0"
             }
           }' > package.json
 
@@ -48,6 +52,7 @@ jobs:
           fi
           npm install
           npx playwright install
+          npm install -g allure-commandline
 
       - name: Cache Node.js modules
         uses: actions/cache@v3
@@ -61,41 +66,21 @@ jobs:
 
       - name: Create test result directories
         run: |
-          mkdir -p playwright-report test-results
+          mkdir -p playwright-report test-results allure-results pdf-report
           touch playwright-report/index.html
           touch test-results/junit-results.xml
 
-      - name: Initialize test database (if exists)
-        run: |
-          if [ -f bookstore/init_db.py ]; then
-            echo "Running bookstore/init_db.py"
-            python bookstore/init_db.py
-          elif [ -f init_db.py ]; then
-            echo "Running init_db.py"
-            python init_db.py
-          else
-            echo "⚠️ No init_db.py found in either location. Skipping DB initialization."
-          fi
+      - name: Initialize test database
+        working-directory: bookstore
+        run: python init_db.py
 
-      - name: Build and run Docker container (if Dockerfile exists)
+      - name: Build and run Docker container
         run: |
-          if [ -f Dockerfile ]; then
-            echo "📦 Dockerfile found. Building container..."
-            docker build -t bookstore . || { echo "❌ Docker build failed"; exit 1; }
-            docker run -d -p 8000:8000 --name bookstore-test \
-              --health-cmd "curl -f http://localhost:8000/health || exit 1" \
-              --health-interval 10s --health-timeout 5s --health-retries 5 \
-              bookstore || { echo "❌ Docker container failed to start"; exit 1; }
-          elif [ -f bookstore/Dockerfile ]; then
-            echo "📦 Dockerfile found in bookstore/. Building container..."
-            docker build -t bookstore bookstore/ || { echo "❌ Docker build failed"; exit 1; }
-            docker run -d -p 8000:8000 --name bookstore-test \
-              --health-cmd "curl -f http://localhost:8000/health || exit 1" \
-              --health-interval 10s --health-timeout 5s --health-retries 5 \
-              bookstore || { echo "❌ Docker container failed to start"; exit 1; }
-          else
-            echo "⚠️ No Dockerfile found in root or bookstore/. Skipping Docker build and run."
-          fi
+          docker build -t bookstore . || { echo "Docker build failed"; exit 1; }
+          docker run -d -p 8000:8000 --name bookstore-test \
+            --health-cmd "curl -f http://localhost:8000/health || exit 1" \
+            --health-interval 10s --health-timeout 5s --health-retries 5 \
+            bookstore || { echo "Docker container failed to start"; exit 1; }
 
       - name: Verify Docker container health
         run: |
@@ -108,7 +93,7 @@ jobs:
 
       - name: Run tests
         run: |
-          npx playwright test --reporter=html,junit || true
+          npx playwright test --reporter=html,junit,allure-playwright || true
           if [ ! -f test-results/junit-results.xml ]; then
             echo "<testsuite></testsuite>" > test-results/junit-results.xml
           fi
@@ -116,6 +101,26 @@ jobs:
             echo "<html><body>No report generated</body></html>" > playwright-report/index.html
           fi
           echo "Test execution completed"
+
+      - name: Generate Allure Report
+        if: always()
+        run: |
+          allure generate allure-results --clean -o allure-report
+          echo "Allure report generated"
+
+      - name: Generate PDF Report
+        if: always()
+        run: |
+          npx playwright show-report --output pdf-report/report.pdf
+          echo "PDF report generated"
+
+      - name: Serve HTML Report
+        if: always()
+        run: |
+          echo "HTML Report will be available at: http://localhost:8080"
+          python -m http.server 8080 --directory playwright-report &
+          sleep 5
+          echo "::notice::View the HTML report at: http://localhost:8080"
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -125,6 +130,8 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            allure-report/
+            pdf-report/
           retention-days: 5
           if-no-files-found: warn
 
