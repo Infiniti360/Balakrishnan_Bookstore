@@ -55,7 +55,14 @@ jobs:
 
       - name: Run tests
         run: |
-          npx playwright test --reporter=html,junit || true
+          npx playwright test --reporter=html,junit
+
+      - name: Validate test result directories
+        run: |
+          if [ ! -d "playwright-report" ] || [ ! -d "test-results" ]; then
+            echo "Required directories are missing!"
+            exit 1
+          fi
 
       - name: List test result directories
         run: |
