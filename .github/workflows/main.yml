@@ -25,12 +25,25 @@ jobs:
           node-version: "16"
           cache: "npm"
 
+      - name: Create package.json
+        run: |
+          echo '{
+            "name": "bookstore",
+            "version": "1.0.0",
+            "description": "Bookstore application",
+            "scripts": {
+              "test": "playwright test"
+            },
+            "dependencies": {
+              "@playwright/test": "^1.40.0"
+            }
+          }' > package.json
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           npm install
-          npm install --package-lock-only
           npx playwright install
 
       - name: Create test result directories
