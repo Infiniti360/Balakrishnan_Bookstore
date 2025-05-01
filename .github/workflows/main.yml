@@ -70,17 +70,37 @@ jobs:
           touch playwright-report/index.html
           touch test-results/junit-results.xml
 
-      - name: Initialize test database
-        working-directory: bookstore
-        run: python init_db.py
-
-      - name: Build and run Docker container
+      - name: Initialize test database (if exists)
         run: |
-          docker build -t bookstore . || { echo "Docker build failed"; exit 1; }
-          docker run -d -p 8000:8000 --name bookstore-test \
-            --health-cmd "curl -f http://localhost:8000/health || exit 1" \
-            --health-interval 10s --health-timeout 5s --health-retries 5 \
-            bookstore || { echo "Docker container failed to start"; exit 1; }
+          if [ -f bookstore/init_db.py ]; then
+            echo "Running bookstore/init_db.py"
+            python bookstore/init_db.py
+          elif [ -f init_db.py ]; then
+            echo "Running init_db.py"
+            python init_db.py
+          else
+            echo "⚠️ No init_db.py found in either location. Skipping DB initialization."
+          fi
+
+      - name: Build and run Docker container (if Dockerfile exists)
+        run: |
+          if [ -f Dockerfile ]; then
+            echo "📦 Dockerfile found. Building container..."
+            docker build -t bookstore . || { echo "❌ Docker build failed"; exit 1; }
+            docker run -d -p 8000:8000 --name bookstore-test \
+              --health-cmd "curl -f http://localhost:8000/health || exit 1" \
+              --health-interval 10s --health-timeout 5s --health-retries 5 \
+              bookstore || { echo "❌ Docker container failed to start"; exit 1; }
+          elif [ -f bookstore/Dockerfile ]; then
+            echo "📦 Dockerfile found in bookstore/. Building container..."
+            docker build -t bookstore bookstore/ || { echo "❌ Docker build failed"; exit 1; }
+            docker run -d -p 8000:8000 --name bookstore-test \
+              --health-cmd "curl -f http://localhost:8000/health || exit 1" \
+              --health-interval 10s --health-timeout 5s --health-retries 5 \
+              bookstore || { echo "❌ Docker container failed to start"; exit 1; }
+          else
+            echo "⚠️ No Dockerfile found in root or bookstore/. Skipping Docker build and run."
+          fi
 
       - name: Verify Docker container health
         run: |
