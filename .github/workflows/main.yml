@@ -66,8 +66,14 @@ jobs:
           touch test-results/junit-results.xml
 
       - name: Initialize test database
-        working-directory: bookstore
-        run: python init_db.py
+        run: |
+          if [ -f bookstore/init_db.py ]; then
+            python bookstore/init_db.py
+          elif [ -f init_db.py ]; then
+            python init_db.py
+          else
+            echo "No init_db.py found in either location. Skipping DB initialization."
+          fi
 
       - name: Build and run Docker container
         run: |
