@@ -1,0 +1,113 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      docker:
+        image: bookstore
+        ports:
+          - 8000:8000
+        options: >-
+          --health-cmd "curl -f http://localhost:8000/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+          cache: "npm"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Node.js dependencies
+        run: |
+          npm install
+          npx playwright install
+
+      - name: Initialize test database
+        run: python init_db.py
+
+      - name: Create test result directories
+        run: |
+          mkdir -p playwright-report test-results
+          echo "Created test result directories"
+
+      - name: Run tests
+        run: |
+          npx playwright test --reporter=html,junit || true
+          echo "Test execution completed"
+
+      - name: Debug test directories
+        run: |
+          echo "Current working directory: $(pwd)"
+          echo "Contents of playwright-report:"
+          ls -la playwright-report/ || echo "playwright-report directory not found"
+          echo "Contents of test-results:"
+          ls -la test-results/ || echo "test-results directory not found"
+
+      - name: Verify test results
+        run: |
+          if [ ! -d "playwright-report" ] || [ ! -d "test-results" ]; then
+            echo "Test result directories are missing"
+            exit 1
+          fi
+          echo "Test result directories verified"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 5
+          if-no-files-found: error
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            let errorMessage = '❌ Tests failed! Check the [test results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.';
+
+            try {
+              if (fs.existsSync('playwright-report/index.html')) {
+                errorMessage += '\n\nHTML report is available in the artifacts.';
+              }
+              if (fs.existsSync('test-results/junit-results.xml')) {
+                errorMessage += '\n\nJUnit report is available in the artifacts.';
+              }
+            } catch (error) {
+              errorMessage += '\n\nError checking report files: ' + error.message;
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: errorMessage
+            });
