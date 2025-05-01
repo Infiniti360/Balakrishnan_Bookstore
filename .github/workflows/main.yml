@@ -24,6 +24,7 @@ jobs:
         with:
           node-version: "16"
           cache: "npm"
+          cache-dependency-path: package.json
 
       - name: Create package.json
         run: |
@@ -43,7 +44,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          npm install --no-package-lock
+          npm ci --no-package-lock
           npx playwright install
 
       - name: Create test result directories
