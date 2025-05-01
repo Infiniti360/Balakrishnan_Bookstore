@@ -203,3 +203,234 @@ npx playwright show-report
 3. Check server health before running tests
 4. Use the HTML reporter for detailed test results
 5. Clean up test data after test runs
+
+## Execution & Reporting
+
+### Test Execution Reports
+
+The test suite generates comprehensive reports using Playwright's built-in HTML reporter. Reports include:
+
+- Test execution status (Pass/Fail/Skip)
+- Detailed error messages and stack traces
+- Test duration and timing information
+- Screenshots and videos of failed tests
+- Test grouping and organization
+
+### Report Generation
+
+```bash
+# Generate HTML report
+npx playwright test --reporter=html
+
+# Generate JUnit XML report (for CI integration)
+npx playwright test --reporter=junit
+
+# Generate multiple report formats
+npx playwright test --reporter=html,junit
+```
+
+### Report Location
+
+- HTML reports: `playwright-report/index.html`
+- JUnit reports: `test-results/junit-results.xml`
+
+## Testing Strategy
+
+### Test Flow Approach
+
+1. **Health Checks First**
+
+   - Verify environment prerequisites
+   - Check server availability
+   - Validate database connection
+   - Test authentication flow
+
+2. **API Endpoint Testing**
+
+   - CRUD operations for each resource
+   - Error handling and edge cases
+   - Authentication and authorization
+   - Input validation
+
+3. **Test Data Management**
+   - Clean test data before each test
+   - Use unique identifiers for resources
+   - Implement proper cleanup after tests
+
+### Reliability and Maintainability
+
+1. **Test Isolation**
+
+   - Each test is independent
+   - No shared state between tests
+   - Proper cleanup after each test
+
+2. **Reusable Components**
+
+   - Base API client for common operations
+   - Shared test utilities
+   - Consistent error handling
+
+3. **Configuration Management**
+   - Environment-specific configurations
+   - Centralized test data
+   - Flexible test parameters
+
+### Challenges and Solutions
+
+1. **Authentication Flow**
+
+   - Challenge: Managing authentication tokens
+   - Solution: Implemented token refresh mechanism
+   - Result: Reliable authentication across tests
+
+2. **Test Data Cleanup**
+
+   - Challenge: Ensuring clean state for each test
+   - Solution: Implemented cleanup hooks
+   - Result: Consistent test environment
+
+3. **API Response Validation**
+   - Challenge: Complex response structures
+   - Solution: Created type-safe response handlers
+   - Result: Reliable response validation
+
+## Continuous Integration (CI/CD)
+
+### GitHub Actions Setup
+
+The project includes a GitHub Actions workflow that automatically runs tests on every push and pull request.
+
+### CI Pipeline Steps
+
+1. **Environment Setup**
+
+   ```yaml
+   - name: Set up Python
+     uses: actions/setup-python@v4
+     with:
+       python-version: "3.10"
+
+   - name: Set up Node.js
+     uses: actions/setup-node@v3
+     with:
+       node-version: "16"
+   ```
+
+2. **Dependencies Installation**
+
+   ```yaml
+   - name: Install Python dependencies
+     run: |
+       python -m pip install --upgrade pip
+       pip install -r requirements.txt
+
+   - name: Install Node.js dependencies
+     run: |
+       npm install
+       npx playwright install
+   ```
+
+3. **Database Setup**
+
+   ```yaml
+   - name: Initialize test database
+     run: python init_db.py
+   ```
+
+4. **Test Execution**
+
+   ```yaml
+   - name: Run tests
+     run: npx playwright test --reporter=html,junit
+   ```
+
+5. **Report Generation**
+   ```yaml
+   - name: Upload test results
+     uses: actions/upload-artifact@v3
+     with:
+       name: test-results
+       path: |
+         playwright-report/
+         test-results/
+   ```
+
+### CI Configuration File
+
+The complete CI configuration is available in `.github/workflows/ci.yml`:
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      docker:
+        image: bookstore
+        ports:
+          - 8000:8000
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          npm install
+          npx playwright install
+
+      - name: Initialize database
+        run: python init_db.py
+
+      - name: Run tests
+        run: npx playwright test --reporter=html,junit
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: |
+            playwright-report/
+            test-results/
+```
+
+### CI Best Practices
+
+1. **Cache Management**
+
+   - Cache dependencies between runs
+   - Clear cache on dependency changes
+
+2. **Parallel Testing**
+
+   - Run tests in parallel when possible
+   - Optimize test execution time
+
+3. **Artifact Management**
+
+   - Store test reports as artifacts
+   - Keep artifacts for failed runs
+
+4. **Notification**
+   - Send notifications on test failures
+   - Report test results to pull requests
