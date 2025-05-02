@@ -106,9 +106,16 @@ jobs:
           fi
           echo "Container is running successfully"
 
+      - name: Kill any existing Playwright processes
+        run: |
+          pkill -f playwright || true
+          sleep 2
+
       - name: Run tests
         run: |
-          npx playwright test --reporter=html,junit
+          export PLAYWRIGHT_BROWSERS_PATH=0
+          # Run tests with dynamic port allocation
+          npx playwright test --reporter=html,junit --port=0
           echo "Test execution completed"
 
       - name: Upload test results
@@ -150,8 +157,15 @@ jobs:
               });
             }
 
-      - name: Cleanup Docker container
+      - name: Cleanup
         if: always()
         run: |
+          # Stop and remove Docker container
           docker stop bookstore-test || true
           docker rm bookstore-test || true
+
+          # Kill any remaining Playwright processes
+          pkill -f playwright || true
+
+          # Clean up any remaining test artifacts
+          rm -rf playwright-report test-results || true
