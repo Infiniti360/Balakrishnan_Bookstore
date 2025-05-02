@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-WORKDIR /app
+WORKDIR /app/bookstore
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -12,14 +12,21 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application
-COPY . .
+COPY . ..
+
+# Initialize the database
+RUN python init_db.py
 
 # Expose the port the app runs on
 EXPOSE 8000
 
+# Set environment variables
+ENV PYTHONPATH=/app/bookstore
+ENV PYTHONUNBUFFERED=1
+
 # Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Command to run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"] 

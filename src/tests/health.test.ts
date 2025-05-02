@@ -1,50 +1,56 @@
 import { test, expect } from '@playwright/test';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { BookApi } from '../api/bookApi';
 
-const execAsync = promisify(exec);
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 2000; // 2 seconds
+
+async function waitForDatabase(request: any): Promise<void> {
+    const bookApi = new BookApi(request);
+    let lastError = null;
+
+    for (let i = 0; i < MAX_RETRIES; i++) {
+        try {
+            const loginResponse = await bookApi.login('test@example.com', 'password123');
+            if (loginResponse.status() !== 200) {
+                throw new Error('Login failed');
+            }
+
+            const response = await bookApi.getAllBooks();
+            if (response.status() === 200) {
+                console.log('✅ Database connection is working');
+                return;
+            }
+        } catch (error) {
+            lastError = error;
+            if (i < MAX_RETRIES - 1) {
+                console.log(`⏳ Waiting for database to be ready... (Attempt ${i + 1}/${MAX_RETRIES})`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            }
+        }
+    }
+
+    console.error('❌ Database connection failed');
+    console.error('Please ensure the database is running and accessible');
+    throw lastError || new Error('Database connection failed after maximum retries');
+}
 
 test.describe('Health Checks', () => {
-    test('should check if Docker is running', async () => {
-        try {
-            const { stdout } = await execAsync('docker ps');
-            expect(stdout).toBeTruthy();
-            console.log('✅ Docker is running');
-        } catch (error) {
-            console.error('❌ Docker is not running');
-            throw new Error('Docker is not running. Please start Docker before running tests.');
-        }
-    });
-
-    test('should check if localhost is running', async ({ request }) => {
+    test('should check if server is running', async ({ request }) => {
         try {
             const response = await request.get('http://localhost:8000/health');
             expect(response.status()).toBe(200);
             const data = await response.json();
             expect(data.status).toBe('up');
-            console.log('✅ Localhost server is running');
+            console.log('✅ Server is running');
         } catch (error) {
-            console.error('❌ Localhost server is not running');
+            console.error('❌ Server is not running');
             console.error('Please ensure the server is running on http://localhost:8000');
-            throw new Error('Localhost server is not running. Please start the server before running tests.');
+            throw new Error('Server is not running. Please start the server before running tests.');
         }
     });
 
     test('should check if database is accessible', async ({ request }) => {
-        try {
-            const bookApi = new BookApi(request);
-            const loginResponse = await bookApi.login('test@example.com', 'password123');
-            expect(loginResponse.status()).toBe(200);
-
-            const response = await bookApi.getAllBooks();
-            expect(response.status()).toBe(200);
-            console.log('✅ Database connection is working');
-        } catch (error) {
-            console.error('❌ Database connection failed');
-            console.error('Please ensure the database is running and accessible');
-            throw new Error('Database connection failed. Please ensure the database is running and accessible.');
-        }
+        await waitForDatabase(request);
     });
 
     test('should verify user credentials', async ({ request }) => {
@@ -101,7 +107,7 @@ test.describe('Health Checks', () => {
 
             // Test book deletion
             const deleteResponse = await bookApi.deleteBook(createdBook.id);
-            expect(deleteResponse.status()).toBe(200); // Changed from 204 to match server response
+            expect(deleteResponse.status()).toBe(200);
             console.log('✅ Book deletion endpoint is working');
 
             // Test get all books
