@@ -88,12 +88,36 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '❌ Tests failed! Check the [test results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.'
-            })
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const commitMessage = context.payload.head_commit?.message || 'Direct push';
+            const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
+            
+            const message = `❌ Tests failed in direct push to main branch!
+            
+**Commit Message:** ${commitMessage}
+**Commit URL:** ${commitUrl}
+**Run URL:** ${runUrl}
+
+Please check the test results in the artifacts section of the run.`;
+            
+            if (context.payload.pull_request) {
+              // For pull requests
+              github.rest.issues.createComment({
+                issue_number: context.payload.pull_request.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message
+              });
+            } else {
+              // For direct pushes, create a new issue
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Test failure in direct push: ${commitMessage.substring(0, 50)}${commitMessage.length > 50 ? '...' : ''}`,
+                body: message,
+                labels: ['test-failure', 'ci-failure']
+              });
+            }
 
       - name: Cleanup
         if: always()
