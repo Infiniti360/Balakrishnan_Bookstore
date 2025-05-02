@@ -10,17 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      docker:
-        image: bookstore
-        ports:
-          - 8000:8000
-        options: >-
-          --health-cmd "curl -f http://localhost:8000/health || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
 
@@ -46,11 +35,42 @@ jobs:
           npm install
           npx playwright install --with-deps
 
+      - name: Build Docker image
+        run: |
+          sed -i '/RUN python init_db.py/d' Dockerfile
+          docker build -t bookstore .
+
+      - name: Start Docker container
+        run: |
+          docker run -d -p 8000:8000 --name bookstore-test \
+            --health-cmd "curl -f http://localhost:8000/health || exit 1" \
+            --health-interval 10s --health-timeout 5s --health-retries 5 \
+            bookstore
+          sleep 10  # Wait for the container to start
+
+      - name: Verify container health
+        run: |
+          if ! docker ps | grep -q bookstore-test; then
+            echo "Container failed to start. Checking logs..."
+            docker logs bookstore-test || true
+            exit 1
+          fi
+          echo "Container is running successfully"
+
       - name: Initialize test database
-        run: python init_db.py
+        run: |
+          until curl -s http://localhost:8000/health > /dev/null; do
+            echo "Waiting for application to be ready..."
+            sleep 2
+          done
+          cd bookstore
+          python init_db.py
+          cd ..
 
       - name: Run tests
-        run: npx playwright test --reporter=html,junit
+        run: |
+          export PLAYWRIGHT_BROWSERS_PATH=0
+          npx playwright test --reporter=html,junit
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -74,3 +94,9 @@ jobs:
               repo: context.repo.repo,
               body: '❌ Tests failed! Check the [test results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.'
             })
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop bookstore-test || true
+          docker rm bookstore-test || true

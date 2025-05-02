@@ -25,80 +25,31 @@ jobs:
           node-version: "18"
           cache: "npm"
 
-      - name: Create package.json
-        run: |
-          echo '{
-            "name": "bookstore",
-            "version": "1.0.0",
-            "description": "Bookstore application",
-            "scripts": {
-              "test": "playwright test"
-            },
-            "dependencies": {
-              "@playwright/test": "^1.40.0"
-            }
-          }' > package.json
-
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          else
-            echo "No requirements.txt found, skipping Python dependency installation"
-          fi
+          pip install -r requirements.txt
+
+      - name: Install Node.js dependencies
+        run: |
           npm install
           npx playwright install --with-deps
 
-      - name: Cache Node.js modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Create test result directories
+      - name: Build Docker image
         run: |
-          mkdir -p playwright-report test-results
-          touch playwright-report/index.html
-          touch test-results/junit-results.xml
+          # Remove the database initialization from Dockerfile temporarily
+          sed -i '/RUN python init_db.py/d' Dockerfile
+          docker build -t bookstore .
 
-      - name: Initialize test database (if exists)
+      - name: Start Docker container
         run: |
-          if [ -f bookstore/init_db.py ]; then
-            echo "Running bookstore/init_db.py"
-            python bookstore/init_db.py
-          elif [ -f init_db.py ]; then
-            echo "Running init_db.py"
-            python init_db.py
-          else
-            echo "⚠️ No init_db.py found in either location. Skipping DB initialization."
-          fi
+          docker run -d -p 8000:8000 --name bookstore-test \
+            --health-cmd "curl -f http://localhost:8000/health || exit 1" \
+            --health-interval 10s --health-timeout 5s --health-retries 5 \
+            bookstore
+          sleep 10  # Wait for the container to start
 
-      - name: Build and run Docker container (if Dockerfile exists)
-        run: |
-          if [ -f Dockerfile ]; then
-            echo "📦 Dockerfile found. Building container..."
-            docker build -t bookstore . || { echo "❌ Docker build failed"; exit 1; }
-            docker run -d -p 8000:8000 --name bookstore-test \
-              --health-cmd "curl -f http://localhost:8000/health || exit 1" \
-              --health-interval 10s --health-timeout 5s --health-retries 5 \
-              bookstore || { echo "❌ Docker container failed to start"; exit 1; }
-          elif [ -f bookstore/Dockerfile ]; then
-            echo "📦 Dockerfile found in bookstore/. Building container..."
-            docker build -t bookstore bookstore/ || { echo "❌ Docker build failed"; exit 1; }
-            docker run -d -p 8000:8000 --name bookstore-test \
-              --health-cmd "curl -f http://localhost:8000/health || exit 1" \
-              --health-interval 10s --health-timeout 5s --health-retries 5 \
-              bookstore || { echo "❌ Docker container failed to start"; exit 1; }
-          else
-            echo "⚠️ No Dockerfile found in root or bookstore/. Skipping Docker build and run."
-          fi
-
-      - name: Verify Docker container health
+      - name: Verify container health
         run: |
           if ! docker ps | grep -q bookstore-test; then
             echo "Container failed to start. Checking logs..."
@@ -107,17 +58,21 @@ jobs:
           fi
           echo "Container is running successfully"
 
-      - name: Kill any existing Playwright processes
+      - name: Initialize test database
         run: |
-          pkill -f playwright || true
-          sleep 2
+          # Wait for the application to be ready
+          until curl -s http://localhost:8000/health > /dev/null; do
+            echo "Waiting for application to be ready..."
+            sleep 2
+          done
+          cd bookstore
+          python init_db.py
+          cd ..
 
       - name: Run tests
         run: |
           export PLAYWRIGHT_BROWSERS_PATH=0
-          # Run tests with dynamic port allocation
-          npx playwright test --reporter=html,junit --port=0
-          echo "Test execution completed"
+          npx playwright test --reporter=html,junit
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -135,38 +90,15 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const fs = require('fs');
-            let errorMessage = '❌ Tests failed! Check the [test results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.';
-
-            try {
-              if (fs.existsSync('playwright-report/index.html')) {
-                errorMessage += '\n\nHTML report is available in the artifacts.';
-              }
-              if (fs.existsSync('test-results/junit-results.xml')) {
-                errorMessage += '\n\nJUnit report is available in the artifacts.';
-              }
-            } catch (error) {
-              errorMessage += '\n\nError checking report files: ' + error.message;
-            }
-
-            if (context.payload.pull_request) {
-              github.rest.issues.createComment({
-                issue_number: context.payload.pull_request.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: errorMessage
-              });
-            }
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Tests failed! Check the [test results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.'
+            })
 
       - name: Cleanup
         if: always()
         run: |
-          # Stop and remove Docker container
           docker stop bookstore-test || true
           docker rm bookstore-test || true
-
-          # Kill any remaining Playwright processes
-          pkill -f playwright || true
-
-          # Clean up any remaining test artifacts
-          rm -rf playwright-report test-results || true
