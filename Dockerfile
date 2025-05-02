@@ -4,7 +4,7 @@ WORKDIR /app/bookstore
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    libasound2 \
+    libasound2t64 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
     libatspi2.0-0 \
@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y \
     libxrandr2 \
     xvfb \
     fonts-noto-color-emoji \
-    ttf-unifont \
+    fonts-unifont \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
