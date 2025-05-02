@@ -4,10 +4,12 @@ WORKDIR /app
 
 RUN /usr/local/bin/python -m pip install --upgrade pip
 
-COPY ./requirements.txt /code/requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+COPY . .
 
-COPY ./ ./
+# Initialize the database
+RUN python init_db.py
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--reload"]

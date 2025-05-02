@@ -2,9 +2,37 @@ version: '3.8'
 services:
   bookstore:
     build:
-      context: ./bookstore
+      context: .
       dockerfile: Dockerfile
     container_name: bookstore
     hostname: bookstore
     ports:
       - "8000:8000"
+    environment:
+      - PYTHONPATH=/app/bookstore
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - bookstore-network
+
+  playwright:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    container_name: playwright
+    depends_on:
+      bookstore:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=test
+      - DEBUG=pw:api
+    networks:
+      - bookstore-network
+
+networks:
+  bookstore-network:
+    driver: bridge
