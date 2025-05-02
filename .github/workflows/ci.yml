@@ -10,17 +10,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      docker:
-        image: bookstore
-        ports:
-          - 8000:8000
-        options: >-
-          --health-cmd "curl -f http://localhost:8000/health || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v3
 
@@ -46,6 +35,14 @@ jobs:
           npm install
           npx playwright install
 
+      - name: Build Docker image
+        run: docker build -t bookstore .
+
+      - name: Start Docker container
+        run: |
+          docker run -d -p 8000:8000 --name bookstore-container bookstore
+          sleep 10  # Wait for the container to start
+
       - name: Initialize test database
         run: python init_db.py
 
@@ -60,6 +57,12 @@ jobs:
           path: |
             playwright-report/
             test-results/
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop bookstore-container || true
+          docker rm bookstore-container || true
 
       - name: Notify on failure
         if: failure()
