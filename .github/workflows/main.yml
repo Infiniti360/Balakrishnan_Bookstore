@@ -38,6 +38,7 @@ jobs:
       - name: Install Node.js dependencies
         run: |
           npm install
+          npm install -D @playwright/test
           npx playwright install --with-deps
 
       - name: Build Docker image
@@ -96,15 +97,9 @@ jobs:
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const commitMessage = context.payload.head_commit?.message || 'Direct push';
             const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha}`;
-            
-            const message = `❌ Tests failed in direct push to main branch!
-            
-**Commit Message:** ${commitMessage}
-**Commit URL:** ${commitUrl}
-**Run URL:** ${runUrl}
 
-Please check the test results in the artifacts section of the run.`;
-            
+            const message = `❌ Tests failed in direct push to main branch!\n\n**Commit Message:** ${commitMessage}\n**Commit URL:** ${commitUrl}\n**Run URL:** ${runUrl}\n\nPlease check the test results in the artifacts section of the run.`;
+
             if (context.payload.pull_request) {
               // For pull requests
               github.rest.issues.createComment({
