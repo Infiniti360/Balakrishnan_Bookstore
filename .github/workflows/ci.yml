@@ -10,8 +10,19 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      docker:
+        image: bookstore
+        ports:
+          - 8000:8000
+        options: >-
+          --health-cmd "curl -f http://localhost:8000/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -20,9 +31,9 @@ jobs:
           cache: "pip"
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "16"
+          node-version: "18"
           cache: "npm"
 
       - name: Install Python dependencies
@@ -33,15 +44,7 @@ jobs:
       - name: Install Node.js dependencies
         run: |
           npm install
-          npx playwright install
-
-      - name: Build Docker image
-        run: docker build -t bookstore .
-
-      - name: Start Docker container
-        run: |
-          docker run -d -p 8000:8000 --name bookstore-container bookstore
-          sleep 10  # Wait for the container to start
+          npx playwright install --with-deps
 
       - name: Initialize test database
         run: python init_db.py
@@ -50,19 +53,15 @@ jobs:
         run: npx playwright test --reporter=html,junit
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
           path: |
             playwright-report/
             test-results/
-
-      - name: Cleanup
-        if: always()
-        run: |
-          docker stop bookstore-container || true
-          docker rm bookstore-container || true
+          retention-days: 5
+          if-no-files-found: warn
 
       - name: Notify on failure
         if: failure()
