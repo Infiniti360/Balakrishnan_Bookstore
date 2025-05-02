@@ -38,6 +38,7 @@ jobs:
       - name: Install Node.js dependencies
         run: |
           npm install
+          npm install -D @playwright/test
           npx playwright install --with-deps
 
       - name: Build Docker image
