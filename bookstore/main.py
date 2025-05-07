@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from bookmgmt import router as book_router
@@ -10,6 +11,16 @@ from database import UserCredentials, get_db
 from utils import create_access_token, get_password_hash, verify_password
 
 app = FastAPI()
+
+# Add CORS middleware with specific origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8081", "http://localhost:8080", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*", "Authorization"],
+    expose_headers=["Authorization"]
+)
 
 app.include_router(book_router, tags=["Books"])
 
@@ -40,3 +51,8 @@ async def login_for_access_token(user_credentials: UserCredentials, db: Session 
     access_token_expires = timedelta(minutes=30)
     access_token = create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

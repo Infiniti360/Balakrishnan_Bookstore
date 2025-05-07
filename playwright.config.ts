@@ -1,36 +1,33 @@
-import { PlaywrightTestConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
+import { testConfig } from './test/config/test.config';
 
-const config: PlaywrightTestConfig = {
-    testDir: './src/tests',
-    timeout: 60000,
-    retries: 2,
-    workers: 1,
-    reporter: [
-        ['list'],
-        ['html', {
-            outputFolder: 'test-results',
-            port: 58763  // Set a specific port for the HTML reporter
-        }]
-    ],
+export default defineConfig({
+    testDir: './test',
+    timeout: testConfig.timeout,
+    retries: testConfig.retries,
     use: {
-        baseURL: 'http://localhost:8000',
-        extraHTTPHeaders: {
-            'Content-Type': 'application/json',
-        },
-        trace: 'on-first-retry',
-        ignoreHTTPSErrors: true,
+        viewport: { width: 360, height: 640 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
     },
     projects: [
         {
-            name: 'Health Checks',
-            testMatch: '**/health.test.ts',
-            timeout: 120000,
-        },
-        {
-            name: 'API Tests',
-            testMatch: '**/*.api.test.ts',
+            name: 'android',
+            use: {
+                ...devices['Pixel 5'],
+                connectOptions: {
+                    wsEndpoint: `http://${testConfig.appium.host}:${testConfig.appium.port}/wd/hub`,
+                },
+                launchOptions: {
+                    args: ['--remote-debugging-port=9222'],
+                },
+                userAgent: 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36',
+            },
         },
     ],
-};
-
-export default config; 
+    reporter: [
+        ['html'],
+        ['list']
+    ],
+}); 

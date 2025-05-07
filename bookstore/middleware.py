@@ -1,5 +1,6 @@
 # Write a middleware that extracts JWT token from the header and validates it
 import os
+import time
 
 import jwt
 from fastapi import HTTPException, Request
@@ -25,6 +26,10 @@ class JWTBearer(HTTPBearer):
     def verify_jwt(self, jwtoken: str) -> bool:
         try:
             payload = jwt.decode(jwtoken, SECRET_KEY, algorithms=[ALGORITHM])
+            # Check if token has expired
+            if 'exp' in payload:
+                if payload['exp'] < time.time():
+                    return False
             return True
         except PyJWTError:
             return False

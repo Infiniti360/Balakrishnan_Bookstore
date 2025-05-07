@@ -434,3 +434,145 @@ jobs:
 4. **Notification**
    - Send notifications on test failures
    - Report test results to pull requests
+
+## Mobile App Development
+
+This section provides detailed instructions for setting up and running the mobile application built with React Native and Expo.
+
+## Mobile App Prerequisites
+
+1. **Node.js and npm**
+
+   - Install Node.js (v16 or higher)
+   - npm will be installed automatically with Node.js
+
+2. **Expo CLI**
+
+   ```bash
+   npm install -g expo-cli
+   ```
+
+3. **Expo Go App**
+
+   - Install Expo Go from your device's app store
+   - For Android: [Google Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent)
+   - For iOS: [App Store](https://apps.apple.com/app/expo-go/id982107779)
+
+4. **Expo Orbit**
+   - Install Expo Orbit from [expo.dev](https://expo.dev/orbit)
+   - This tool helps manage your Expo development environment
+
+## Mobile App Setup
+
+### 1. Install Dependencies
+
+```bash
+cd mobile-app
+npm install
+```
+
+### 2. Configure Environment
+
+1. Update the API URL in `src/services/api.ts`:
+   ```typescript
+   const API_URL = "http://YOUR_LOCAL_IP:8000";
+   ```
+   Replace `YOUR_LOCAL_IP` with your computer's local IP address.
+
+### 3. Start the Backend Server
+
+1. Activate the Python virtual environment:
+
+   ```bash
+   # From the root directory
+   source venv/bin/activate  # On macOS/Linux
+   # or
+   .\venv\Scripts\activate  # On Windows
+   ```
+
+2. Start the backend server:
+   ```bash
+   python app.py
+   ```
+
+### 4. Launch the Mobile App
+
+1. **Using Expo Orbit:**
+
+   ```bash
+   cd mobile-app
+   expo start
+   ```
+
+   - Open Expo Orbit
+   - Connect your Android device via USB
+   - Select your device in Orbit
+   - Click "Install with Orbit"
+
+2. **Using Expo Go:**
+   - Open Expo Go on your device
+   - Scan the QR code shown in the terminal
+   - The app will load on your device
+
+### 5. Updating Expo Go
+
+1. **For Android:**
+
+   - Visit [Expo Go on Google Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent)
+   - Click "Update" if available
+   - Or download the latest version from [expo.dev/go](https://expo.dev/go)
+
+2. **For iOS:**
+   - Visit [Expo Go on App Store](https://apps.apple.com/app/expo-go/id982107779)
+   - Click "Update" if available
+
+## Sample Credentials
+
+Use these credentials to test the app:
+
+- Email: test@example.com
+- Password: password123
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Connection Issues**
+
+   - Ensure your mobile device and computer are on the same network
+   - Verify the API_URL in `api.ts` matches your computer's local IP
+   - Check if the backend server is running
+
+2. **Expo Go Issues**
+
+   - Clear Expo Go app cache
+   - Restart Expo Go
+   - Ensure you have the latest version installed
+
+3. **Build Issues**
+
+   ```bash
+   # Clear npm cache
+   npm cache clean --force
+
+   # Remove node_modules and reinstall
+   rm -rf node_modules
+   npm install
+   ```
+
+## Mobile App Features
+
+- User authentication (login/logout)
+- Book listing and management
+- Create, read, update, and delete books
+- Secure token-based authentication
+- Offline support with AsyncStorage
+- Error handling and network status checks
+
+## Development Notes
+
+- The app uses React Native with Expo for cross-platform development
+- Axios for API communication
+- AsyncStorage for local data persistence
+- Token-based authentication with JWT
+- Error handling for network issues and authentication failures
