@@ -1,7 +1,16 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'http://192.168.1.6:8080';
+// Update the API URL to match your backend
+const API_URL = 'http://localhost:8080';
+
+export interface Book {
+    id: string;
+    name: string;
+    author: string;
+    published_year: number;
+    book_summary: string;
+}
 
 // Create axios instance with default config
 const api = axios.create({
@@ -9,39 +18,48 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    // Add timeout and other configurations
+    timeout: 10000,
+    validateStatus: (status) => status >= 200 && status < 300,
 });
 
 // Add request interceptor to add auth token
 api.interceptors.request.use(
     async (config) => {
-        const token = await AsyncStorage.getItem('userToken');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+        try {
+            const token = await AsyncStorage.getItem('userToken');
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+            return config;
+        } catch (error) {
+            console.error('Error in request interceptor:', error);
+            return config;
         }
-        return config;
     },
     (error) => {
+        console.error('Request interceptor error:', error);
         return Promise.reject(error);
     }
 );
 
-export interface Book {
-    id: string;
-    title: string;
-    author: string;
-    description?: string;
-    price?: number;
-    stock?: number;
-    isbn?: string;
-    createdAt: string;
-    updatedAt: string;
-}
+// Add response interceptor for error handling
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        if (error.response?.status === 401) {
+            // Handle unauthorized error
+            await AsyncStorage.removeItem('userToken');
+        }
+        return Promise.reject(error);
+    }
+);
 
 export const bookService = {
     // Get all books
     getAllBooks: async (): Promise<Book[]> => {
         try {
-            const response = await api.get('/api/books');
+            const response = await api.get('/books/');
             return response.data;
         } catch (error) {
             console.error('Error fetching books:', error);
@@ -52,7 +70,7 @@ export const bookService = {
     // Get a single book
     getBook: async (id: string): Promise<Book> => {
         try {
-            const response = await api.get(`/api/books/${id}`);
+            const response = await api.get(`/books/${id}`);
             return response.data;
         } catch (error) {
             console.error('Error fetching book:', error);
@@ -61,21 +79,18 @@ export const bookService = {
     },
 
     // Create a new book
-    createBook: async (book: Omit<Book, 'id' | 'createdAt' | 'updatedAt'>): Promise<Book> => {
+    createBook: async (book: Omit<Book, 'id'>): Promise<Book> => {
         try {
-            const uniqueId = `book_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-            const newBook = {
-                ...book,
-                id: uniqueId,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-
-            const response = await api.post('/api/books', newBook);
+            console.log('Creating book with data:', book);
+            const response = await api.post('/books/', book);
+            console.log('Create book response:', response.data);
             return response.data;
         } catch (error) {
             console.error('Error creating book:', error);
+            if (axios.isAxiosError(error)) {
+                console.error('Response data:', error.response?.data);
+                console.error('Response status:', error.response?.status);
+            }
             throw error;
         }
     },
@@ -83,11 +98,7 @@ export const bookService = {
     // Update a book
     updateBook: async (id: string, book: Partial<Book>): Promise<Book> => {
         try {
-            const updatedBook = {
-                ...book,
-                updatedAt: new Date().toISOString()
-            };
-            const response = await api.put(`/api/books/${id}`, updatedBook);
+            const response = await api.put(`/books/${id}`, book);
             return response.data;
         } catch (error) {
             console.error('Error updating book:', error);
@@ -98,15 +109,10 @@ export const bookService = {
     // Delete a book
     deleteBook: async (id: string): Promise<void> => {
         try {
-            console.log('Attempting to delete book with ID:', id);
-            const response = await api.delete(`/api/books/${id}`);
-            console.log('Delete response:', response);
+            const response = await api.delete(`/books/${id}`);
             return response.data;
         } catch (error) {
             console.error('Error deleting book:', error);
-            if (axios.isAxiosError(error)) {
-                console.error('API Error:', error.response?.data);
-            }
             throw error;
         }
     },
@@ -115,18 +121,10 @@ export const bookService = {
 export const authService = {
     login: async (email: string, password: string): Promise<string> => {
         try {
-            console.log('Attempting login with:', { email });
-
-            // For now, we'll use a simple validation since we don't have a backend
-            if (email && password.length >= 3) {
-                // Generate a dummy token
-                const token = `dummy_token_${Date.now()}`;
-                await AsyncStorage.setItem('userToken', token);
-                console.log('Login successful, token stored');
-                return token;
-            } else {
-                throw new Error('Invalid credentials');
-            }
+            const response = await api.post('/login', { email, password });
+            const token = response.data.access_token;
+            await AsyncStorage.setItem('userToken', token);
+            return token;
         } catch (error) {
             console.error('Login error:', error);
             throw error;
@@ -135,9 +133,7 @@ export const authService = {
 
     logout: async (): Promise<void> => {
         try {
-            console.log('Logging out...');
             await AsyncStorage.removeItem('userToken');
-            console.log('Logout successful');
         } catch (error) {
             console.error('Logout error:', error);
             throw error;
@@ -147,7 +143,6 @@ export const authService = {
     isAuthenticated: async (): Promise<boolean> => {
         try {
             const token = await AsyncStorage.getItem('userToken');
-            console.log('Auth check, token exists:', !!token);
             return !!token;
         } catch (error) {
             console.error('Auth check error:', error);

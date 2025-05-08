@@ -1,8 +1,11 @@
+import os
 import requests
 import json
 
 # API configuration
-BASE_URL = 'http://192.168.31.55:8000'  # Update with your computer's IP address
+API_HOST = os.getenv("API_HOST", "localhost")
+API_PORT = os.getenv("API_PORT", "8000")
+BASE_URL = f'http://{API_HOST}:{API_PORT}'
 LOGIN_URL = f'{BASE_URL}/login'
 BOOKS_URL = f'{BASE_URL}/books/'
 
@@ -44,10 +47,11 @@ def add_sample_books():
     try:
         # Login to get token
         login_data = {
-            "email": "test@example.com",
-            "password": "password123"
+            "email": os.getenv("ADMIN_EMAIL", "test@example.com"),
+            "password": os.getenv("ADMIN_PASSWORD", "password123")
         }
         
+        print(f"Connecting to API at {BASE_URL}")
         print("Logging in...")
         response = requests.post(LOGIN_URL, json=login_data)
         response.raise_for_status()
@@ -62,11 +66,17 @@ def add_sample_books():
         
         # Add each sample book
         for book in SAMPLE_BOOKS:
-            response = requests.post(BOOKS_URL, json=book, headers=headers)
-            response.raise_for_status()
-            print(f"Added book: {book['name']}")
+            try:
+                response = requests.post(BOOKS_URL, json=book, headers=headers)
+                response.raise_for_status()
+                print(f"Added book: {book['name']}")
+            except requests.exceptions.RequestException as e:
+                print(f"Error adding book {book['name']}: {e}")
+                if hasattr(e, 'response') and e.response is not None:
+                    print(f"Response: {e.response.text}")
+                continue
             
-        print("All sample books added successfully!")
+        print("Sample books processing completed!")
         
     except requests.exceptions.RequestException as e:
         print(f"Error: {e}")

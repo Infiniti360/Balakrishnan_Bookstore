@@ -6,7 +6,13 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test:webdriver": "cd tests/webdriver && wdio wdio.conf.js",
+    "kill-ports": "kill-port 3000 5000 19006 || true",
+    "start:backend": "cd backend && python run.py",
+    "start:web": "cd web && npm start",
+    "start:mobile": "cd mobile && npm start",
+    "start:all": "npm run kill-ports && npm run start:backend & npm run start:web & npm run start:mobile"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.18.2",

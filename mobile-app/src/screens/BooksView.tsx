@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { bookService, Book } from '../services/api';
+import { bookService, authService, Book } from '../services/api';
 
 // API base URL - using IP address instead of localhost for mobile devices
 const API_URL = 'http://192.168.1.6:8080';
@@ -33,6 +33,10 @@ export default function BooksView() {
     } catch (error) {
       console.error('Error fetching books:', error);
       Alert.alert('Error', 'Failed to load books');
+      // If unauthorized, redirect to login
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        handleLogout();
+      }
     } finally {
       setLoading(false);
     }
@@ -41,16 +45,14 @@ export default function BooksView() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const token = await AsyncStorage.getItem('userToken');
-        if (!token) {
-          // No valid session, redirect to login
+        const isAuthenticated = await authService.isAuthenticated();
+        if (!isAuthenticated) {
           navigation.reset({
             index: 0,
             routes: [{ name: 'Login' }],
           });
           return;
         }
-        // Valid session, fetch books
         fetchBooks();
       } catch (error) {
         console.error('Session check error:', error);
@@ -117,11 +119,7 @@ export default function BooksView() {
 
   const handleLogout = async () => {
     try {
-      console.log('Logging out...');
-      await AsyncStorage.removeItem('userToken');
-      console.log('Session cleared, navigating to Login');
-      
-      // Reset navigation to Login
+      await authService.logout();
       navigation.reset({
         index: 0,
         routes: [{ name: 'Login' }],
@@ -138,11 +136,10 @@ export default function BooksView() {
       onPress={() => navigation.navigate('BookDetail', { book: item })}
     >
       <View style={styles.bookContent}>
-        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.title}>{item.name}</Text>
         <Text style={styles.author}>by {item.author}</Text>
-        {item.price && <Text style={styles.price}>${item.price.toFixed(2)}</Text>}
-        {item.stock !== undefined && <Text style={styles.stock}>In stock: {item.stock}</Text>}
-        {item.isbn && <Text style={styles.isbn}>ISBN: {item.isbn}</Text>}
+        <Text style={styles.year}>Published: {item.published_year}</Text>
+        <Text style={styles.summary} numberOfLines={2}>{item.book_summary}</Text>
         <Text style={styles.bookId}>ID: {item.id}</Text>
       </View>
       <View style={styles.buttonContainer}>
@@ -247,14 +244,14 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 4,
   },
-  price: {
-    fontSize: 16,
-    color: '#2ecc71',
-    fontWeight: 'bold',
-  },
-  stock: {
+  year: {
     fontSize: 14,
     color: '#7f8c8d',
+  },
+  summary: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    marginTop: 4,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -299,11 +296,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 4,
-  },
-  isbn: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
   },
   disabledButton: {
     opacity: 0.5,

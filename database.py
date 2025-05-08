@@ -5,28 +5,16 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import Field, SQLModel
 
-# Database configuration using environment variables
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "bookstore")
-
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
-# For testing/development, fallback to SQLite if PostgreSQL is not available
-if os.getenv("USE_SQLITE", "false").lower() == "true":
-    DATABASE_URL = "sqlite:///./test.db"
+# Use SQLite by default
+DATABASE_URL = "sqlite:///./bookstore.db"
 
 Base = declarative_base()
-
 
 class UserCredentials(SQLModel, table=True):
     __tablename__ = "user_credentials"
     id: Optional[int] = Field(default=None, primary_key=True, index=True)
     email: str = Field(index=True, unique=True)
     password: str
-
 
 class Book(SQLModel, table=True):
     __tablename__ = "books"
@@ -36,8 +24,7 @@ class Book(SQLModel, table=True):
     published_year: int
     book_summary: str
 
-
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
@@ -48,4 +35,4 @@ def get_db():
     try:
         yield db
     finally:
-        db.close()
+        db.close() 
