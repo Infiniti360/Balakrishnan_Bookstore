@@ -490,9 +490,9 @@ npm install
    .\venv\Scripts\activate  # On Windows
    ```
 
-2. Start the backend server:
+2. Activate and Start the backend server: (Mac)
    ```bash
-   python app.py
+   source bookstore/venv/bin/activate && pip install -r bookstore/requirements.txt && python3 bookstore/main.py
    ```
 
 ### 4. Launch the Mobile App
