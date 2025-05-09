@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Request
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlmodel import Session, select
 from datetime import timedelta
 from typing import List
+import traceback
 
 from .database import get_db, Book, UserCredentials
 from .auth import authenticate_user, create_access_token, get_password_hash, get_current_user
@@ -38,7 +39,8 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 @router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    print(f"Login attempt with username: {form_data.username}")  # Debug log
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -73,16 +75,48 @@ def get_books(
     return books
 
 @router.post("/books", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
-def create_book(
+async def create_book(
+    request: Request,
     book: BookCreate,
     db: Session = Depends(get_db),
     current_user: UserCredentials = Depends(get_current_user)
 ):
-    db_book = Book(**book.model_dump())
-    db.add(db_book)
-    db.commit()
-    db.refresh(db_book)
-    return db_book
+    try:
+        # Log the incoming request data
+        body = await request.json()
+        print(f"Creating book with data: {body}")
+        
+        # Validate the year
+        if book.published_year < 1000 or book.published_year > 9999:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Published year must be between 1000 and 9999"
+            )
+            
+        # Create the book using dict() instead of model_dump()
+        book_data = book.dict()
+        print(f"Converted book data: {book_data}")
+        db_book = Book(**book_data)
+        db.add(db_book)
+        db.commit()
+        db.refresh(db_book)
+        
+        print(f"Book created successfully: {db_book}")
+        return db_book
+        
+    except ValueError as ve:
+        print(f"Validation error: {str(ve)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(ve)
+        )
+    except Exception as e:
+        print(f"Error creating book: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
 
 @router.get("/books/{book_id}", response_model=BookResponse)
 def get_book(

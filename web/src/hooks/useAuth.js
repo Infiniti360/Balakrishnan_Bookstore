@@ -31,7 +31,8 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const login = async (email, password) => {
     try {
-      const data = await authService.login(email, password);
+      const { token } = await authService.login(email, password);
+      localStorage.setItem('token', token);
       setUser({ authenticated: true });
       return { success: true };
     } catch (error) {

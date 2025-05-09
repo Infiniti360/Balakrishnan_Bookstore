@@ -2,6 +2,29 @@ from sqlmodel import Session
 from .database import engine, Book, UserCredentials
 from .auth import get_password_hash
 
+def seed_users(db: Session):
+    """Add default users to the database"""
+    default_users = [
+        UserCredentials(
+            username="admin",
+            email="admin@bookstore.com",
+            password=get_password_hash("admin123")
+        ),
+        UserCredentials(
+            username="user",
+            email="user@bookstore.com",
+            password=get_password_hash("user123")
+        )
+    ]
+    
+    # Check if users already exist
+    existing_users = db.query(UserCredentials).count()
+    if existing_users == 0:
+        for user in default_users:
+            db.add(user)
+        db.commit()
+        print("Default users added successfully")
+
 def seed_books(db: Session):
     """Add default books to the database"""
     default_books = [
@@ -34,6 +57,24 @@ def seed_books(db: Session):
             author="J.R.R. Tolkien",
             published_year=1937,
             book_summary="The adventure of Bilbo Baggins, a hobbit who is reluctantly swept into an epic quest to reclaim a stolen treasure from a dragon."
+        ),
+        Book(
+            name="Harry Potter and the Philosopher's Stone",
+            author="J.K. Rowling",
+            published_year=1997,
+            book_summary="The first novel in the Harry Potter series, following the life of a young wizard, Harry Potter, and his friends at Hogwarts School of Witchcraft and Wizardry."
+        ),
+        Book(
+            name="The Alchemist",
+            author="Paulo Coelho",
+            published_year=1988,
+            book_summary="A philosophical novel about a young Andalusian shepherd who dreams of finding a worldly treasure and embarks on a journey to find it."
+        ),
+        Book(
+            name="Brave New World",
+            author="Aldous Huxley",
+            published_year=1932,
+            book_summary="A dystopian novel set in a futuristic World State, whose citizens are environmentally engineered into an intelligence-based social hierarchy."
         )
     ]
     
@@ -44,29 +85,6 @@ def seed_books(db: Session):
             db.add(book)
         db.commit()
         print("Default books added successfully")
-
-def seed_users(db: Session):
-    """Add default users to the database"""
-    default_users = [
-        UserCredentials(
-            username="admin",
-            email="admin@bookstore.com",
-            password=get_password_hash("admin123")
-        ),
-        UserCredentials(
-            username="user",
-            email="user@bookstore.com",
-            password=get_password_hash("user123")
-        )
-    ]
-    
-    # Check if users already exist
-    existing_users = db.query(UserCredentials).count()
-    if existing_users == 0:
-        for user in default_users:
-            db.add(user)
-        db.commit()
-        print("Default users added successfully")
 
 def seed_data():
     """Seed the database with initial data"""

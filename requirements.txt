@@ -1,7 +1,11 @@
-fastapi==0.68.1
-uvicorn==0.15.0
-sqlalchemy==1.4.23
-sqlmodel==0.0.8
-python-dotenv==0.19.0
-pydantic==1.8.2
+fastapi==0.110.0
+uvicorn==0.28.0
+sqlalchemy==2.0.30
+sqlmodel==0.0.14
+python-dotenv==1.0.1
+python-jose==3.3.0
+passlib==1.7.4
+python-multipart==0.0.9
+bcrypt==4.1.2
+pydantic==1.10.13
 requests==2.31.0 

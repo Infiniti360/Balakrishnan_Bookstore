@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:5001/api';
 
 // Create axios instance
 const api = axios.create({
@@ -50,11 +50,11 @@ export const authService = {
 // Book services
 export const bookService = {
   getBooks: async () => {
-    return api.get('/books');
+    return axios.get('http://localhost:5002/books');
   },
   
   getBook: async (id) => {
-    return api.get(`/books/${id}`);
+    return axios.get(`http://localhost:5002/books/${id}`);
   },
   
   createBook: async (bookData) => {

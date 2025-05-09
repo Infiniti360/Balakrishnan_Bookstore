@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -13,13 +13,15 @@ load_dotenv()
 # Initialize app
 app = FastAPI(title="BookStore API")
 
-# Configure CORS
+# Configure CORS with more specific settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For production, specify the actual domains
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 # Include API routes
@@ -35,7 +37,18 @@ def on_startup():
 def read_root():
     return {"message": "Welcome to BookStore API"}
 
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "message": "Backend server is running"}
+
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 5000))
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True) 
+    port = 5001  # Fixed port to match mobile app configuration
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=True,
+        access_log=True,
+        log_level="debug"
+    ) 
