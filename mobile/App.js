@@ -9,6 +9,7 @@ import LoginScreen from './app/screens/LoginScreen';
 import RegisterScreen from './app/screens/RegisterScreen';
 import BookListScreen from './app/screens/BookListScreen';
 import BookFormScreen from './app/screens/BookFormScreen';
+import BookDetailScreen from './app/screens/BookDetailScreen';
 
 // Create navigation stacks
 const Stack = createNativeStackNavigator();
@@ -29,6 +30,15 @@ const AppNavigator = () => (
       component={BookListScreen} 
       options={{
         headerShown: false
+      }}
+    />
+    <Stack.Screen 
+      name="BookDetail" 
+      component={BookDetailScreen} 
+      options={{
+        title: 'Book Details',
+        headerShown: true,
+        presentation: 'card'
       }}
     />
     <Stack.Screen 

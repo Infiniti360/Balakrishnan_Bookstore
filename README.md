@@ -2,6 +2,32 @@
 
 A complete full-stack BookStore application with backend API, web frontend, and mobile app.
 
+A. Check your installed Java versions
+
+/usr/libexec/java_home -V
+
+B. Switch to Java 17
+If you have Java 17 installed, set it as your active Java version:
+
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+
+C. Verify
+
+java -version
+
+D. Clean and Rebuild
+
+cd android
+./gradlew clean
+cd ..
+npx expo run:android
+
+REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1 npx expo start --dev-client --clear
+
+Should show something like:
+
+openjdk version "17.0.x" ...
+
 ## Project Structure
 
 - **backend/** - FastAPI backend with SQLite database
@@ -97,7 +123,39 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 python run.py
 ```
 
-Or use the npm script:
+lsof -ti :5001 | xargs kill -9
+
+pip3 install -r requirements.txt
+python3 run.py
+
+npx expo start --dev-client
+
+A. Clean the Android Build
+
+cd android
+./gradlew clean
+cd ..
+
+Then try again:
+
+npx expo run:android
+
+B. Reinstall Node Modules and Clear Caches
+
+rm -rf node_modules
+rm -rf android/build
+rm -rf android/app/build
+npm install
+npx expo start -c
+
+1. Build a development client
+   From your project root (or mobile directory), run:
+   npx expo run:android
+
+2. After the build completes
+   You can then run:
+
+npx expo start --dev-client
 
 ```bash
 npm run start:backend

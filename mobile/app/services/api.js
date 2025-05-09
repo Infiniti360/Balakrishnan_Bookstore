@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 // API configuration based on platform
 const getApiUrl = () => {
-  // Since we're using adb reverse, we can use localhost for Android too
+  // Using localhost since we have port forwarding set up with adb reverse
   return 'http://localhost:5001';
 };
 

@@ -12,7 +12,8 @@
     "start:backend": "cd backend && python run.py",
     "start:web": "cd web && npm start",
     "start:mobile": "cd mobile && npm start",
-    "start:all": "npm run kill-ports && npm run start:backend & npm run start:web & npm run start:mobile"
+    "start:all": "npm run kill-ports && npm run start:backend & npm run start:web & npm run start:mobile",
+    "start:server": "uvicorn main:app --host 0.0.0.0 --port 5001"
   },
   "dependencies": {
     "@expo/metro-config": "~0.17.1",
