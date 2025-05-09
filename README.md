@@ -446,3 +446,167 @@ Regular User:
 - React Native: latest
 
 These fixes have resolved the major blocking issues and established a stable development environment. The application is now functioning as intended with proper data flow between all components.
+
+Here’s a clean, professional project documentation for setting up and running your Bookstore App (Backend + Frontend) across Mobile (Android/iOS) and Web, complete with database verification, API testing, and port forwarding for emulators.
+
+⸻
+
+📚 Bookstore App – Developer Setup Documentation
+
+This guide explains how to set up, run, and test the Bookstore application’s backend and frontend components across Android, iOS, and Web using Expo and FastAPI.
+
+⸻
+
+🔧 Prerequisites
+
+Ensure you have the following installed:
+• Python 3.10+
+• Node.js 16+
+• Java 17 (Zulu/OpenJDK)
+• Expo CLI: npm install -g expo-cli
+• adb (for Android emulator support)
+• SQLite (for querying the DB)
+• Git, pip, and virtualenv
+
+⸻
+
+📦 Backend Setup (FastAPI)
+
+1. Create and Activate Virtual Environment
+
+python3 -m venv venv
+source venv/bin/activate # macOS/Linux
+
+2. Install Python Dependencies
+
+pip install --upgrade pip
+pip install -r requirements.txt
+
+3. Confirm Java 17 is Configured
+
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+java -version
+
+Expected output:
+
+openjdk version "17.0.15" ...
+
+4. Start the Backend Server
+
+uvicorn main:app --host 0.0.0.0 --port 5001
+
+This allows access from mobile devices/emulators on the same network.
+
+⸻
+
+🧪 Backend API Verification
+
+1. Root API Check
+
+curl http://localhost:5001/
+
+# {"status":"ok","message":"Welcome to Bookstore API"}
+
+2. Health Endpoint
+
+curl http://localhost:5001/api/health
+
+# {"status":"healthy","service":"bookstore-api"}
+
+⸻
+
+📱 Frontend (Mobile App via Expo)
+
+1. Navigate to Mobile Directory
+
+cd bookstore/mobile
+
+2. Clean Android Gradle Cache (Optional for Native Builds)
+
+cd android
+./gradlew clean
+cd ..
+
+3. Start Expo Dev Server (with Dev Client)
+
+REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1 npx expo start --dev-client --clear
+
+This supports Android/iOS native modules in development.
+
+⸻
+
+🌐 Frontend Web Access
+
+To run the project in a web browser:
+
+npx expo start --web
+
+Ensure backend is accessible from browser (via localhost:5001 or your local IP).
+
+⸻
+
+🤖 Android Emulator Port Forwarding
+
+Forward port 5001 so the Android emulator can reach the backend server:
+
+adb reverse tcp:5001 tcp:5001
+adb reverse --list # confirm it's registered
+
+Then test from emulator using:
+
+curl http://10.0.2.2:5001/api/books
+
+⸻
+
+🗃️ SQLite Database Check
+
+1. Confirm DB File Exists
+
+ls -la bookstore.db
+
+2. Inspect DB Contents
+
+sqlite3 bookstore.db "SELECT \* FROM books;"
+
+⸻
+
+🛠 Restart Server with Health Endpoint Changes
+
+If you modified the FastAPI app:
+
+pkill -f "uvicorn main:app"
+uvicorn main:app --host 0.0.0.0 --port 5001
+
+⸻
+
+✅ Summary: Common Commands
+
+Task Command
+Start Backend uvicorn main:app --host 0.0.0.0 --port 5001
+Start Expo Dev Server npx expo start --dev-client --clear
+Start for Web npx expo start --web
+Port Forward for Emulator adb reverse tcp:5001 tcp:5001
+Test API curl http://localhost:5001/api/books
+Check SQLite DB sqlite3 bookstore.db "SELECT \* FROM books;"
+Kill Server (Optional Cleanup) pkill -f "uvicorn main:app"
+
+⸻
+
+📁 Recommended Repo Structure
+
+bookstore/
+├── backend/
+│ ├── main.py
+│ ├── run.py
+│ ├── requirements.txt
+│ └── bookstore.db
+├── mobile/
+│ ├── App.js
+│ ├── app/ (expo-router screens)
+│ └── android/
+
+⸻
+
+Let me know if you’d like a README.md file generated from this automatically.
+
+test@example..com / password123
