@@ -22,7 +22,10 @@
       },
       "package": "com.bookstore.app",
       "edgeToEdgeEnabled": true,
-      "permissions": ["android.permission.DETECT_SCREEN_CAPTURE", "android.permission.INTERNET"],
+      "permissions": [
+        "android.permission.DETECT_SCREEN_CAPTURE",
+        "android.permission.INTERNET"
+      ],
       "buildProperties": {
         "screenCaptureObserverEnabled": false
       }
@@ -32,7 +35,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "fe7a1475-03b2-4a23-aa9d-8beab899fcd1"
       }
     }
   }
